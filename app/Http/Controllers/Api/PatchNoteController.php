@@ -7,6 +7,7 @@ use App\Models\PatchNote;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 class PatchNoteController extends Controller
@@ -16,6 +17,8 @@ class PatchNoteController extends Controller
      */
     public function index(): JsonResponse
     {
+        Gate::authorize('viewAny', PatchNote::class);
+
         return response()->json(
             PatchNote::with('user')->get()
         );
@@ -26,6 +29,8 @@ class PatchNoteController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize('create', PatchNote::class);
+
         $patchNote = PatchNote::create($this->validatedData($request));
 
         return response()->json($patchNote->load('user'), Response::HTTP_CREATED);
@@ -36,6 +41,8 @@ class PatchNoteController extends Controller
      */
     public function show(PatchNote $patchNote): JsonResponse
     {
+        Gate::authorize('view', $patchNote);
+
         return response()->json($patchNote->load('user'));
     }
 
@@ -44,6 +51,8 @@ class PatchNoteController extends Controller
      */
     public function update(Request $request, PatchNote $patchNote): JsonResponse
     {
+        Gate::authorize('update', $patchNote);
+
         $patchNote->update($this->validatedData($request, updating: true));
 
         return response()->json($patchNote->load('user'));
@@ -54,6 +63,8 @@ class PatchNoteController extends Controller
      */
     public function destroy(PatchNote $patchNote): Response
     {
+        Gate::authorize('delete', $patchNote);
+
         $patchNote->delete();
 
         return response()->noContent();

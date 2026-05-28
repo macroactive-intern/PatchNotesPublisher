@@ -31,6 +31,7 @@ test('public users can list all patch notes', function () {
 });
 
 test('patch note API routes support CRUD operations', function () {
+    $admin = User::factory()->admin()->create();
     $user = User::factory()->create();
     $patchNote = PatchNote::create([
         'user_id' => $user->id,
@@ -47,7 +48,7 @@ test('patch note API routes support CRUD operations', function () {
         ->assertOk()
         ->assertJsonPath('id', $patchNote->id);
 
-    $created = $this->postJson('/api/patch-notes', [
+    $created = $this->actingAs($admin)->postJson('/api/patch-notes', [
         'user_id' => $user->id,
         'title' => 'Created notes',
         'content' => 'Created through the API.',
@@ -57,7 +58,7 @@ test('patch note API routes support CRUD operations', function () {
         ->assertJsonPath('title', 'Created notes')
         ->json();
 
-    $this->putJson("/api/patch-notes/{$created['id']}", [
+    $this->actingAs($admin)->putJson("/api/patch-notes/{$created['id']}", [
         'title' => 'Updated notes',
         'published' => false,
     ])
@@ -65,7 +66,7 @@ test('patch note API routes support CRUD operations', function () {
         ->assertJsonPath('title', 'Updated notes')
         ->assertJsonPath('published', false);
 
-    $this->deleteJson("/api/patch-notes/{$created['id']}")
+    $this->actingAs($admin)->deleteJson("/api/patch-notes/{$created['id']}")
         ->assertNoContent();
 
     $this->assertDatabaseMissing('patch_notes', ['id' => $created['id']]);
@@ -127,5 +128,59 @@ test('viewers cannot view draft patch notes', function () {
 
     $this->actingAs($viewer)
         ->getJson("/api/patch-notes/{$patchNote->id}")
+        ->assertForbidden();
+});
+
+test('viewers cannot create update or delete patch notes', function () {
+    $owner = User::factory()->editor()->create();
+    $viewer = User::factory()->viewer()->create();
+    $patchNote = PatchNote::create([
+        'user_id' => $owner->id,
+        'title' => 'Published notes',
+        'content' => 'Public notes.',
+        'published' => true,
+    ]);
+
+    $this->actingAs($viewer)->postJson('/api/patch-notes', [
+        'user_id' => $viewer->id,
+        'title' => 'Viewer notes',
+        'content' => 'Viewer content.',
+    ])->assertForbidden();
+
+    $this->actingAs($viewer)->putJson("/api/patch-notes/{$patchNote->id}", [
+        'title' => 'Viewer update',
+    ])->assertForbidden();
+
+    $this->actingAs($viewer)->deleteJson("/api/patch-notes/{$patchNote->id}")
+        ->assertForbidden();
+});
+
+test('editors can update their own patch notes but cannot update others or delete', function () {
+    $editor = User::factory()->editor()->create();
+    $otherEditor = User::factory()->editor()->create();
+    $ownPatchNote = PatchNote::create([
+        'user_id' => $editor->id,
+        'title' => 'Own notes',
+        'content' => 'Owned content.',
+        'published' => false,
+    ]);
+    $otherPatchNote = PatchNote::create([
+        'user_id' => $otherEditor->id,
+        'title' => 'Other notes',
+        'content' => 'Other content.',
+        'published' => true,
+    ]);
+
+    $this->actingAs($editor)->putJson("/api/patch-notes/{$ownPatchNote->id}", [
+        'title' => 'Updated own notes',
+    ])
+        ->assertOk()
+        ->assertJsonPath('title', 'Updated own notes');
+
+    $this->actingAs($editor)->putJson("/api/patch-notes/{$otherPatchNote->id}", [
+        'title' => 'Updated other notes',
+    ])->assertForbidden();
+
+    $this->actingAs($editor)->deleteJson("/api/patch-notes/{$ownPatchNote->id}")
         ->assertForbidden();
 });
