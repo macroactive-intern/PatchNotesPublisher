@@ -4,12 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePatchNoteRequest;
+use App\Http\Requests\UpdatePatchNoteRequest;
 use App\Models\PatchNote;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 
 class PatchNoteController extends Controller
 {
@@ -50,11 +49,11 @@ class PatchNoteController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, PatchNote $patchNote): JsonResponse
+    public function update(UpdatePatchNoteRequest $request, PatchNote $patchNote): JsonResponse
     {
         Gate::authorize('update', $patchNote);
 
-        $patchNote->update($this->validatedData($request, updating: true));
+        $patchNote->update($request->validated());
 
         return response()->json($patchNote->load('user'));
     }
@@ -71,18 +70,4 @@ class PatchNoteController extends Controller
         return response()->noContent();
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function validatedData(Request $request, bool $updating = false): array
-    {
-        $presence = $updating ? 'sometimes' : 'required';
-
-        return $request->validate([
-            'title' => [$presence, 'string', 'max:255'],
-            'content' => [$presence, 'string'],
-            'published' => ['sometimes', 'boolean'],
-            'user_id' => [$presence, 'integer', Rule::exists('users', 'id')],
-        ]);
-    }
 }

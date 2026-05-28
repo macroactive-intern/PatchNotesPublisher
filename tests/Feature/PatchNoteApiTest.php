@@ -223,3 +223,29 @@ test('editors can update their own patch notes but cannot update others or delet
     $this->actingAs($editor)->deleteJson("/api/patch-notes/{$ownPatchNote->id}")
         ->assertForbidden();
 });
+
+test('update ignores submitted user ids', function () {
+    $admin = User::factory()->admin()->create();
+    $owner = User::factory()->editor()->create();
+    $otherUser = User::factory()->editor()->create();
+    $patchNote = PatchNote::create([
+        'user_id' => $owner->id,
+        'title' => 'Original notes',
+        'content' => 'Original content.',
+        'published' => true,
+    ]);
+
+    $this->actingAs($admin)->putJson("/api/patch-notes/{$patchNote->id}", [
+        'user_id' => $otherUser->id,
+        'title' => 'Updated notes',
+    ])
+        ->assertOk()
+        ->assertJsonPath('title', 'Updated notes')
+        ->assertJsonPath('user_id', $owner->id);
+
+    $this->assertDatabaseHas('patch_notes', [
+        'id' => $patchNote->id,
+        'title' => 'Updated notes',
+        'user_id' => $owner->id,
+    ]);
+});
