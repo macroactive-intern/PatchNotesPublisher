@@ -36,7 +36,7 @@ test('patch note API routes support CRUD operations', function () {
         'user_id' => $user->id,
         'title' => 'Initial notes',
         'content' => 'First published notes.',
-        'published' => false,
+        'published' => true,
     ]);
 
     $this->getJson('/api/patch-notes')
@@ -69,4 +69,48 @@ test('patch note API routes support CRUD operations', function () {
         ->assertNoContent();
 
     $this->assertDatabaseMissing('patch_notes', ['id' => $created['id']]);
+});
+
+test('public users can view published patch notes', function () {
+    $user = User::factory()->create();
+    $patchNote = PatchNote::create([
+        'user_id' => $user->id,
+        'title' => 'Published notes',
+        'content' => 'Public release notes.',
+        'published' => true,
+    ]);
+
+    $this->getJson("/api/patch-notes/{$patchNote->id}")
+        ->assertOk()
+        ->assertJsonPath('id', $patchNote->id)
+        ->assertJsonPath('published', true);
+});
+
+test('public users cannot view draft patch notes', function () {
+    $user = User::factory()->create();
+    $patchNote = PatchNote::create([
+        'user_id' => $user->id,
+        'title' => 'Draft notes',
+        'content' => 'Internal draft notes.',
+        'published' => false,
+    ]);
+
+    $this->getJson("/api/patch-notes/{$patchNote->id}")
+        ->assertUnauthorized();
+});
+
+test('authenticated users can view draft patch notes', function () {
+    $user = User::factory()->create();
+    $patchNote = PatchNote::create([
+        'user_id' => $user->id,
+        'title' => 'Draft notes',
+        'content' => 'Internal draft notes.',
+        'published' => false,
+    ]);
+
+    $this->actingAs($user)
+        ->getJson("/api/patch-notes/{$patchNote->id}")
+        ->assertOk()
+        ->assertJsonPath('id', $patchNote->id)
+        ->assertJsonPath('published', false);
 });

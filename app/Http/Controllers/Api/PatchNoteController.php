@@ -34,8 +34,12 @@ class PatchNoteController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(PatchNote $patchNote): JsonResponse
+    public function show(Request $request, PatchNote $patchNote): JsonResponse
     {
+        if (! $patchNote->published && ! $request->user()) {
+            abort(Response::HTTP_UNAUTHORIZED);
+        }
+
         return response()->json($patchNote->load('user'));
     }
 
