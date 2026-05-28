@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StorePatchNoteRequest extends FormRequest
 {
@@ -26,7 +25,6 @@ class StorePatchNoteRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string'],
             'published' => ['sometimes', 'boolean'],
-            'user_id' => ['required', 'integer', Rule::exists('users', 'id')],
         ];
     }
 }

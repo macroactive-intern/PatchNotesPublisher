@@ -49,13 +49,13 @@ test('patch note API routes support CRUD operations', function () {
         ->assertJsonPath('id', $patchNote->id);
 
     $created = $this->actingAs($admin)->postJson('/api/patch-notes', [
-        'user_id' => $user->id,
         'title' => 'Created notes',
         'content' => 'Created through the API.',
         'published' => true,
     ])
         ->assertCreated()
         ->assertJsonPath('title', 'Created notes')
+        ->assertJsonPath('user_id', $admin->id)
         ->json();
 
     $this->actingAs($admin)->putJson("/api/patch-notes/{$created['id']}", [
@@ -142,7 +142,6 @@ test('viewers cannot create update or delete patch notes', function () {
     ]);
 
     $this->actingAs($viewer)->postJson('/api/patch-notes', [
-        'user_id' => $viewer->id,
         'title' => 'Viewer notes',
         'content' => 'Viewer content.',
     ])->assertForbidden();
@@ -159,23 +158,40 @@ test('editors can create patch notes', function () {
     $editor = User::factory()->editor()->create();
 
     $this->actingAs($editor)->postJson('/api/patch-notes', [
-        'user_id' => $editor->id,
         'title' => 'Editor notes',
         'content' => 'Created by an editor.',
         'published' => false,
     ])
         ->assertCreated()
-        ->assertJsonPath('title', 'Editor notes');
+        ->assertJsonPath('title', 'Editor notes')
+        ->assertJsonPath('user_id', $editor->id);
 });
 
 test('public users cannot create patch notes', function () {
     $user = User::factory()->create();
 
     $this->postJson('/api/patch-notes', [
-        'user_id' => $user->id,
         'title' => 'Public notes',
         'content' => 'Created without auth.',
     ])->assertForbidden();
+});
+
+test('store ignores submitted user ids and assigns the authenticated user as owner', function () {
+    $editor = User::factory()->editor()->create();
+    $otherUser = User::factory()->create();
+
+    $this->actingAs($editor)->postJson('/api/patch-notes', [
+        'user_id' => $otherUser->id,
+        'title' => 'Owned notes',
+        'content' => 'Ownership comes from auth.',
+    ])
+        ->assertCreated()
+        ->assertJsonPath('user_id', $editor->id);
+
+    $this->assertDatabaseHas('patch_notes', [
+        'title' => 'Owned notes',
+        'user_id' => $editor->id,
+    ]);
 });
 
 test('editors can update their own patch notes but cannot update others or delete', function () {

@@ -32,7 +32,7 @@ class PatchNoteController extends Controller
     {
         Gate::authorize('create', PatchNote::class);
 
-        $patchNote = PatchNote::create($request->validated());
+        $patchNote = $request->user()->patchNotes()->create($request->validated());
 
         return response()->json($patchNote->load('user'), Response::HTTP_CREATED);
     }
