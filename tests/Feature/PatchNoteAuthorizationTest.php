@@ -50,7 +50,7 @@ test('guests cannot create update delete or view draft patch notes', function ()
         ->assertUnauthorized();
 });
 
-test('admins can create update delete and view draft patch notes', function () {
+test('admins can create update any delete any and view draft patch notes', function () {
     $admin = User::factory()->admin()->create();
     $owner = User::factory()->editor()->create();
     $patchNote = PatchNote::create([
@@ -79,8 +79,11 @@ test('admins can create update delete and view draft patch notes', function () {
         ->assertOk()
         ->assertJsonPath('title', 'Admin update');
 
-    $this->deleteJson("/api/patch-notes/{$created['id']}")
+    $this->deleteJson("/api/patch-notes/{$patchNote->id}")
         ->assertNoContent();
+
+    $this->assertDatabaseMissing('patch_notes', ['id' => $patchNote->id]);
+    $this->assertDatabaseHas('patch_notes', ['id' => $created['id']]);
 });
 
 test('editors can create and update their own notes only', function () {
