@@ -144,6 +144,10 @@ test('viewers are read only', function () {
 
     Sanctum::actingAs($viewer);
 
+    $this->getJson('/api/patch-notes')
+        ->assertOk()
+        ->assertJsonFragment(['title' => 'Published notes']);
+
     $this->getJson("/api/patch-notes/{$published->id}")
         ->assertOk();
 
