@@ -15,4 +15,14 @@ Route::get('patch-notes/{patch_note}', [PatchNoteController::class, 'show'])
     ->middleware(RequirePublishedStatus::class)
     ->name('patch-notes.show');
 
-Route::apiResource('patch-notes', PatchNoteController::class)->except('show');
+Route::get('patch-notes', [PatchNoteController::class, 'index'])
+    ->name('patch-notes.index');
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('patch-notes', [PatchNoteController::class, 'store'])
+        ->name('patch-notes.store');
+    Route::match(['put', 'patch'], 'patch-notes/{patch_note}', [PatchNoteController::class, 'update'])
+        ->name('patch-notes.update');
+    Route::delete('patch-notes/{patch_note}', [PatchNoteController::class, 'destroy'])
+        ->name('patch-notes.destroy');
+});

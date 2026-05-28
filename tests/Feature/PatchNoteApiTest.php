@@ -3,6 +3,7 @@
 use App\Models\PatchNote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
 
@@ -48,7 +49,9 @@ test('patch note API routes support CRUD operations', function () {
         ->assertOk()
         ->assertJsonPath('id', $patchNote->id);
 
-    $created = $this->actingAs($admin)->postJson('/api/patch-notes', [
+    Sanctum::actingAs($admin);
+
+    $created = $this->postJson('/api/patch-notes', [
         'title' => 'Created notes',
         'content' => 'Created through the API.',
         'published' => true,
@@ -58,7 +61,7 @@ test('patch note API routes support CRUD operations', function () {
         ->assertJsonPath('user_id', $admin->id)
         ->json();
 
-    $this->actingAs($admin)->putJson("/api/patch-notes/{$created['id']}", [
+    $this->putJson("/api/patch-notes/{$created['id']}", [
         'title' => 'Updated notes',
         'published' => false,
     ])
@@ -66,7 +69,7 @@ test('patch note API routes support CRUD operations', function () {
         ->assertJsonPath('title', 'Updated notes')
         ->assertJsonPath('published', false);
 
-    $this->actingAs($admin)->deleteJson("/api/patch-notes/{$created['id']}")
+    $this->deleteJson("/api/patch-notes/{$created['id']}")
         ->assertNoContent();
 
     $this->assertDatabaseMissing('patch_notes', ['id' => $created['id']]);
@@ -109,7 +112,9 @@ test('owning editors can view draft patch notes', function () {
         'published' => false,
     ]);
 
-    $this->actingAs($user)
+    Sanctum::actingAs($user);
+
+    $this
         ->getJson("/api/patch-notes/{$patchNote->id}")
         ->assertOk()
         ->assertJsonPath('id', $patchNote->id)
@@ -126,7 +131,9 @@ test('viewers cannot view draft patch notes', function () {
         'published' => false,
     ]);
 
-    $this->actingAs($viewer)
+    Sanctum::actingAs($viewer);
+
+    $this
         ->getJson("/api/patch-notes/{$patchNote->id}")
         ->assertForbidden();
 });
@@ -141,23 +148,27 @@ test('viewers cannot create update or delete patch notes', function () {
         'published' => true,
     ]);
 
-    $this->actingAs($viewer)->postJson('/api/patch-notes', [
+    Sanctum::actingAs($viewer);
+
+    $this->postJson('/api/patch-notes', [
         'title' => 'Viewer notes',
         'content' => 'Viewer content.',
     ])->assertForbidden();
 
-    $this->actingAs($viewer)->putJson("/api/patch-notes/{$patchNote->id}", [
+    $this->putJson("/api/patch-notes/{$patchNote->id}", [
         'title' => 'Viewer update',
     ])->assertForbidden();
 
-    $this->actingAs($viewer)->deleteJson("/api/patch-notes/{$patchNote->id}")
+    $this->deleteJson("/api/patch-notes/{$patchNote->id}")
         ->assertForbidden();
 });
 
 test('editors can create patch notes', function () {
     $editor = User::factory()->editor()->create();
 
-    $this->actingAs($editor)->postJson('/api/patch-notes', [
+    Sanctum::actingAs($editor);
+
+    $this->postJson('/api/patch-notes', [
         'title' => 'Editor notes',
         'content' => 'Created by an editor.',
         'published' => false,
@@ -173,14 +184,33 @@ test('public users cannot create patch notes', function () {
     $this->postJson('/api/patch-notes', [
         'title' => 'Public notes',
         'content' => 'Created without auth.',
-    ])->assertForbidden();
+    ])->assertUnauthorized();
+});
+
+test('public users cannot update or delete patch notes', function () {
+    $owner = User::factory()->editor()->create();
+    $patchNote = PatchNote::create([
+        'user_id' => $owner->id,
+        'title' => 'Protected notes',
+        'content' => 'Protected content.',
+        'published' => true,
+    ]);
+
+    $this->putJson("/api/patch-notes/{$patchNote->id}", [
+        'title' => 'Public update',
+    ])->assertUnauthorized();
+
+    $this->deleteJson("/api/patch-notes/{$patchNote->id}")
+        ->assertUnauthorized();
 });
 
 test('store ignores submitted user ids and assigns the authenticated user as owner', function () {
     $editor = User::factory()->editor()->create();
     $otherUser = User::factory()->create();
 
-    $this->actingAs($editor)->postJson('/api/patch-notes', [
+    Sanctum::actingAs($editor);
+
+    $this->postJson('/api/patch-notes', [
         'user_id' => $otherUser->id,
         'title' => 'Owned notes',
         'content' => 'Ownership comes from auth.',
@@ -210,17 +240,19 @@ test('editors can update their own patch notes but cannot update others or delet
         'published' => true,
     ]);
 
-    $this->actingAs($editor)->putJson("/api/patch-notes/{$ownPatchNote->id}", [
+    Sanctum::actingAs($editor);
+
+    $this->putJson("/api/patch-notes/{$ownPatchNote->id}", [
         'title' => 'Updated own notes',
     ])
         ->assertOk()
         ->assertJsonPath('title', 'Updated own notes');
 
-    $this->actingAs($editor)->putJson("/api/patch-notes/{$otherPatchNote->id}", [
+    $this->putJson("/api/patch-notes/{$otherPatchNote->id}", [
         'title' => 'Updated other notes',
     ])->assertForbidden();
 
-    $this->actingAs($editor)->deleteJson("/api/patch-notes/{$ownPatchNote->id}")
+    $this->deleteJson("/api/patch-notes/{$ownPatchNote->id}")
         ->assertForbidden();
 });
 
@@ -235,7 +267,9 @@ test('update ignores submitted user ids', function () {
         'published' => true,
     ]);
 
-    $this->actingAs($admin)->putJson("/api/patch-notes/{$patchNote->id}", [
+    Sanctum::actingAs($admin);
+
+    $this->putJson("/api/patch-notes/{$patchNote->id}", [
         'user_id' => $otherUser->id,
         'title' => 'Updated notes',
     ])
