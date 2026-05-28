@@ -44,7 +44,7 @@ test('guests can list patch notes and view published patch notes', function () {
 
     $this->getJson("/api/patch-notes/{$patchNote->id}")
         ->assertOk()
-        ->assertJsonPath('id', $patchNote->id);
+        ->assertJsonPath('data.id', $patchNote->id);
 });
 
 test('guests cannot create update delete or view draft patch notes', function () {
@@ -92,14 +92,14 @@ test('admins can create update any delete any and view draft patch notes', funct
         'content' => 'Created by admin.',
     ])
         ->assertCreated()
-        ->assertJsonPath('user_id', $admin->id)
-        ->json();
+        ->assertJsonPath('data.user_id', $admin->id)
+        ->json('data');
 
     $this->putJson("/api/patch-notes/{$patchNote->id}", [
         'title' => 'Admin update',
     ])
         ->assertOk()
-        ->assertJsonPath('title', 'Admin update');
+        ->assertJsonPath('data.title', 'Admin update');
 
     $this->deleteJson("/api/patch-notes/{$patchNote->id}")
         ->assertNoContent();
@@ -131,7 +131,7 @@ test('editors can create and update their own notes only', function () {
         'content' => 'Created by editor.',
     ])
         ->assertCreated()
-        ->assertJsonPath('user_id', $editor->id);
+        ->assertJsonPath('data.user_id', $editor->id);
 
     $this->getJson("/api/patch-notes/{$ownPatchNote->id}")
         ->assertOk();
@@ -140,7 +140,7 @@ test('editors can create and update their own notes only', function () {
         'title' => 'Updated own draft',
     ])
         ->assertOk()
-        ->assertJsonPath('title', 'Updated own draft');
+        ->assertJsonPath('data.title', 'Updated own draft');
 
     $this->getJson("/api/patch-notes/{$otherPatchNote->id}")
         ->assertForbidden();

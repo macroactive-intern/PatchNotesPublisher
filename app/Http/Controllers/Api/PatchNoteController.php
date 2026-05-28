@@ -19,9 +19,9 @@ class PatchNoteController extends Controller
     {
         Gate::authorize('viewAny', PatchNote::class);
 
-        return response()->json(
-            PatchNote::with('user')->get()
-        );
+        return response()->json([
+            'data' => PatchNote::with('user')->get(),
+        ]);
     }
 
     /**
@@ -33,7 +33,9 @@ class PatchNoteController extends Controller
 
         $patchNote = $request->user()->patchNotes()->create($request->validated());
 
-        return response()->json($patchNote->load('user'), Response::HTTP_CREATED);
+        return response()->json([
+            'data' => $patchNote->refresh()->load('user'),
+        ], Response::HTTP_CREATED);
     }
 
     /**
@@ -43,7 +45,9 @@ class PatchNoteController extends Controller
     {
         Gate::authorize('view', $patchNote);
 
-        return response()->json($patchNote->load('user'));
+        return response()->json([
+            'data' => $patchNote->load('user'),
+        ]);
     }
 
     /**
@@ -55,7 +59,9 @@ class PatchNoteController extends Controller
 
         $patchNote->update($request->validated());
 
-        return response()->json($patchNote->load('user'));
+        return response()->json([
+            'data' => $patchNote->refresh()->load('user'),
+        ]);
     }
 
     /**

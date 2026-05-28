@@ -18,7 +18,7 @@ test('guests can view published patch notes through the middleware', function ()
 
     $this->getJson("/api/patch-notes/{$patchNote->id}")
         ->assertOk()
-        ->assertJsonPath('id', $patchNote->id);
+        ->assertJsonPath('data.id', $patchNote->id);
 });
 
 test('guests are blocked from draft patch notes through the middleware', function () {
@@ -47,5 +47,5 @@ test('authenticated owners can access draft patch notes through the middleware',
 
     $this->getJson("/api/patch-notes/{$patchNote->id}")
         ->assertOk()
-        ->assertJsonPath('id', $patchNote->id);
+        ->assertJsonPath('data.id', $patchNote->id);
 });

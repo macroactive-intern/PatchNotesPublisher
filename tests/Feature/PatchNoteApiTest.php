@@ -7,6 +7,44 @@ use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
 
+test('patch note responses use consistent JSON structure and HTTP status codes', function () {
+    $admin = User::factory()->admin()->create();
+    $patchNote = PatchNote::create([
+        'user_id' => $admin->id,
+        'title' => 'Existing notes',
+        'content' => 'Existing content.',
+        'published' => true,
+    ]);
+
+    $this->getJson('/api/patch-notes')
+        ->assertOk()
+        ->assertJsonStructure(['data']);
+
+    $this->getJson("/api/patch-notes/{$patchNote->id}")
+        ->assertOk()
+        ->assertJsonStructure(['data' => ['id', 'title', 'content', 'published', 'user_id']]);
+
+    Sanctum::actingAs($admin);
+
+    $created = $this->postJson('/api/patch-notes', [
+        'title' => 'Created notes',
+        'content' => 'Created content.',
+    ])
+        ->assertStatus(201)
+        ->assertJsonStructure(['data' => ['id', 'title', 'content', 'published', 'user_id']])
+        ->json('data');
+
+    $this->putJson("/api/patch-notes/{$created['id']}", [
+        'title' => 'Updated notes',
+    ])
+        ->assertStatus(200)
+        ->assertJsonStructure(['data' => ['id', 'title', 'content', 'published', 'user_id']]);
+
+    $this->deleteJson("/api/patch-notes/{$created['id']}")
+        ->assertStatus(204)
+        ->assertContent('');
+});
+
 test('public users can list all patch notes', function () {
     $user = User::factory()->create();
 
@@ -26,7 +64,7 @@ test('public users can list all patch notes', function () {
 
     $this->getJson('/api/patch-notes')
         ->assertOk()
-        ->assertJsonCount(2)
+        ->assertJsonCount(2, 'data')
         ->assertJsonFragment(['title' => 'Published notes'])
         ->assertJsonFragment(['title' => 'Draft notes']);
 });
@@ -47,7 +85,7 @@ test('patch note API routes support CRUD operations', function () {
 
     $this->getJson("/api/patch-notes/{$patchNote->id}")
         ->assertOk()
-        ->assertJsonPath('id', $patchNote->id);
+        ->assertJsonPath('data.id', $patchNote->id);
 
     Sanctum::actingAs($admin);
 
@@ -57,17 +95,17 @@ test('patch note API routes support CRUD operations', function () {
         'published' => true,
     ])
         ->assertCreated()
-        ->assertJsonPath('title', 'Created notes')
-        ->assertJsonPath('user_id', $admin->id)
-        ->json();
+        ->assertJsonPath('data.title', 'Created notes')
+        ->assertJsonPath('data.user_id', $admin->id)
+        ->json('data');
 
     $this->putJson("/api/patch-notes/{$created['id']}", [
         'title' => 'Updated notes',
         'published' => false,
     ])
         ->assertOk()
-        ->assertJsonPath('title', 'Updated notes')
-        ->assertJsonPath('published', false);
+        ->assertJsonPath('data.title', 'Updated notes')
+        ->assertJsonPath('data.published', false);
 
     $this->deleteJson("/api/patch-notes/{$created['id']}")
         ->assertNoContent();
@@ -86,8 +124,8 @@ test('public users can view published patch notes', function () {
 
     $this->getJson("/api/patch-notes/{$patchNote->id}")
         ->assertOk()
-        ->assertJsonPath('id', $patchNote->id)
-        ->assertJsonPath('published', true);
+        ->assertJsonPath('data.id', $patchNote->id)
+        ->assertJsonPath('data.published', true);
 });
 
 test('public users cannot view draft patch notes', function () {
@@ -117,8 +155,8 @@ test('owning editors can view draft patch notes', function () {
     $this
         ->getJson("/api/patch-notes/{$patchNote->id}")
         ->assertOk()
-        ->assertJsonPath('id', $patchNote->id)
-        ->assertJsonPath('published', false);
+        ->assertJsonPath('data.id', $patchNote->id)
+        ->assertJsonPath('data.published', false);
 });
 
 test('viewers cannot view draft patch notes', function () {
@@ -174,8 +212,8 @@ test('editors can create patch notes', function () {
         'published' => false,
     ])
         ->assertCreated()
-        ->assertJsonPath('title', 'Editor notes')
-        ->assertJsonPath('user_id', $editor->id);
+        ->assertJsonPath('data.title', 'Editor notes')
+        ->assertJsonPath('data.user_id', $editor->id);
 });
 
 test('public users cannot create patch notes', function () {
@@ -216,7 +254,7 @@ test('store ignores submitted user ids and assigns the authenticated user as own
         'content' => 'Ownership comes from auth.',
     ])
         ->assertCreated()
-        ->assertJsonPath('user_id', $editor->id);
+        ->assertJsonPath('data.user_id', $editor->id);
 
     $this->assertDatabaseHas('patch_notes', [
         'title' => 'Owned notes',
@@ -246,7 +284,7 @@ test('editors can update their own patch notes but cannot update others or delet
         'title' => 'Updated own notes',
     ])
         ->assertOk()
-        ->assertJsonPath('title', 'Updated own notes');
+        ->assertJsonPath('data.title', 'Updated own notes');
 
     $this->putJson("/api/patch-notes/{$otherPatchNote->id}", [
         'title' => 'Updated other notes',
@@ -274,8 +312,8 @@ test('update ignores submitted user ids', function () {
         'title' => 'Updated notes',
     ])
         ->assertOk()
-        ->assertJsonPath('title', 'Updated notes')
-        ->assertJsonPath('user_id', $owner->id);
+        ->assertJsonPath('data.title', 'Updated notes')
+        ->assertJsonPath('data.user_id', $owner->id);
 
     $this->assertDatabaseHas('patch_notes', [
         'id' => $patchNote->id,
