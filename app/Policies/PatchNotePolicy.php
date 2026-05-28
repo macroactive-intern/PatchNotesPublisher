@@ -20,7 +20,9 @@ class PatchNotePolicy
      */
     public function view(?User $user, PatchNote $patchNote): bool
     {
-        return $patchNote->published || $user !== null;
+        return $patchNote->published
+            || $user?->isAdmin()
+            || ($user?->isEditor() && $patchNote->user_id === $user->id);
     }
 
     /**
@@ -36,7 +38,8 @@ class PatchNotePolicy
      */
     public function update(User $user, PatchNote $patchNote): bool
     {
-        return $user->isAdmin() || $user->isEditor();
+        return $user->isAdmin()
+            || ($user->isEditor() && $patchNote->user_id === $user->id);
     }
 
     /**

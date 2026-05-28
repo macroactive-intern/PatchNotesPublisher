@@ -99,8 +99,8 @@ test('public users cannot view draft patch notes', function () {
         ->assertUnauthorized();
 });
 
-test('authenticated users can view draft patch notes', function () {
-    $user = User::factory()->create();
+test('owning editors can view draft patch notes', function () {
+    $user = User::factory()->editor()->create();
     $patchNote = PatchNote::create([
         'user_id' => $user->id,
         'title' => 'Draft notes',
@@ -113,4 +113,19 @@ test('authenticated users can view draft patch notes', function () {
         ->assertOk()
         ->assertJsonPath('id', $patchNote->id)
         ->assertJsonPath('published', false);
+});
+
+test('viewers cannot view draft patch notes', function () {
+    $owner = User::factory()->editor()->create();
+    $viewer = User::factory()->viewer()->create();
+    $patchNote = PatchNote::create([
+        'user_id' => $owner->id,
+        'title' => 'Draft notes',
+        'content' => 'Internal draft notes.',
+        'published' => false,
+    ]);
+
+    $this->actingAs($viewer)
+        ->getJson("/api/patch-notes/{$patchNote->id}")
+        ->assertForbidden();
 });

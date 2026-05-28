@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\PatchNote;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;
 
 class RequirePublishedStatus
@@ -18,8 +19,8 @@ class RequirePublishedStatus
     {
         $patchNote = $request->route('patch_note');
 
-        if ($patchNote instanceof PatchNote && ! $patchNote->published && ! $request->user()) {
-            abort(Response::HTTP_UNAUTHORIZED);
+        if ($patchNote instanceof PatchNote && Gate::denies('view', $patchNote)) {
+            abort($request->user() ? Response::HTTP_FORBIDDEN : Response::HTTP_UNAUTHORIZED);
         }
 
         return $next($request);
