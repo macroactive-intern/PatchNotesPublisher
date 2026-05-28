@@ -64,6 +64,19 @@ class PatchNoteController extends Controller
         ]);
     }
 
+    public function publish(PatchNote $patchNote): JsonResponse
+    {
+        Gate::authorize('publish');
+
+        $patchNote->update([
+            'published' => ! $patchNote->published,
+        ]);
+
+        return response()->json([
+            'data' => $patchNote->refresh()->load('user'),
+        ]);
+    }
+
     /**
      * Remove the specified resource from storage.
      */

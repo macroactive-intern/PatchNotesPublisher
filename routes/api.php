@@ -21,6 +21,8 @@ Route::get('patch-notes', [PatchNoteController::class, 'index'])
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('patch-notes', [PatchNoteController::class, 'store'])
         ->name('patch-notes.store');
+    Route::patch('patch-notes/{patch_note}/publish', [PatchNoteController::class, 'publish'])
+        ->name('patch-notes.publish');
     Route::match(['put', 'patch'], 'patch-notes/{patch_note}', [PatchNoteController::class, 'update'])
         ->name('patch-notes.update');
     Route::delete('patch-notes/{patch_note}', [PatchNoteController::class, 'destroy'])
