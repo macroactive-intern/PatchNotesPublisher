@@ -32,7 +32,9 @@ class PatchNoteController extends Controller
                     }
                 });
             })
-            ->get();
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate(15);
 
         return PatchNoteResource::collection($notes)->response();
     }

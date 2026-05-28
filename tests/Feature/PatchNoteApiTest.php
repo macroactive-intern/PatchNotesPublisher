@@ -45,6 +45,36 @@ test('patch note responses use consistent JSON structure and HTTP status codes',
         ->assertContent('');
 });
 
+test('index returns notes newest first with pagination metadata', function () {
+    $user = User::factory()->create();
+
+    $older = PatchNote::create([
+        'user_id' => $user->id,
+        'title' => 'Older note',
+        'content' => 'Created first.',
+        'published' => true,
+    ]);
+    $newer = PatchNote::create([
+        'user_id' => $user->id,
+        'title' => 'Newer note',
+        'content' => 'Created second.',
+        'published' => true,
+    ]);
+
+    $response = $this->getJson('/api/patch-notes')->assertOk();
+
+    $ids = $response->json('data.*.id');
+
+    expect($ids[0])->toBe($newer->id)
+        ->and($ids[1])->toBe($older->id);
+
+    $response->assertJsonStructure([
+        'data',
+        'links' => ['first', 'last', 'prev', 'next'],
+        'meta' => ['current_page', 'last_page', 'per_page', 'total'],
+    ]);
+});
+
 test('patch note responses expose only safe fields and omit sensitive user data', function () {
     $owner = User::factory()->editor()->create();
     $patchNote = PatchNote::create([
