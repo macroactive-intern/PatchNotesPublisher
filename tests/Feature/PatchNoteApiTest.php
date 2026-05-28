@@ -6,6 +6,30 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+test('public users can list all patch notes', function () {
+    $user = User::factory()->create();
+
+    PatchNote::create([
+        'user_id' => $user->id,
+        'title' => 'Published notes',
+        'content' => 'Visible published content.',
+        'published' => true,
+    ]);
+
+    PatchNote::create([
+        'user_id' => $user->id,
+        'title' => 'Draft notes',
+        'content' => 'Visible draft content.',
+        'published' => false,
+    ]);
+
+    $this->getJson('/api/patch-notes')
+        ->assertOk()
+        ->assertJsonCount(2)
+        ->assertJsonFragment(['title' => 'Published notes'])
+        ->assertJsonFragment(['title' => 'Draft notes']);
+});
+
 test('patch note API routes support CRUD operations', function () {
     $user = User::factory()->create();
     $patchNote = PatchNote::create([

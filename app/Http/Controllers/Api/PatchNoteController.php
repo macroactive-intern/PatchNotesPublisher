@@ -17,7 +17,7 @@ class PatchNoteController extends Controller
     public function index(): JsonResponse
     {
         return response()->json(
-            PatchNote::with('user')->latest()->get()
+            PatchNote::with('user')->get()
         );
     }
 
