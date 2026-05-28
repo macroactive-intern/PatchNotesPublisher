@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePatchNoteRequest;
 use App\Http\Requests\UpdatePatchNoteRequest;
+use App\Http\Resources\PatchNoteResource;
 use App\Models\PatchNote;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,7 +34,7 @@ class PatchNoteController extends Controller
             })
             ->get();
 
-        return response()->json(['data' => $notes]);
+        return PatchNoteResource::collection($notes)->response();
     }
 
     /**
@@ -45,9 +46,9 @@ class PatchNoteController extends Controller
 
         $patchNote = $request->user()->patchNotes()->create($request->validated());
 
-        return response()->json([
-            'data' => $patchNote->refresh()->load('user'),
-        ], Response::HTTP_CREATED);
+        return PatchNoteResource::make($patchNote->refresh()->load('user'))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     /**
@@ -57,9 +58,7 @@ class PatchNoteController extends Controller
     {
         Gate::authorize('view', $patchNote);
 
-        return response()->json([
-            'data' => $patchNote->load('user'),
-        ]);
+        return PatchNoteResource::make($patchNote->load('user'))->response();
     }
 
     /**
@@ -71,9 +70,7 @@ class PatchNoteController extends Controller
 
         $patchNote->update($request->validated());
 
-        return response()->json([
-            'data' => $patchNote->refresh()->load('user'),
-        ]);
+        return PatchNoteResource::make($patchNote->refresh()->load('user'))->response();
     }
 
     public function publish(PatchNote $patchNote): JsonResponse
@@ -84,9 +81,7 @@ class PatchNoteController extends Controller
             'published' => ! $patchNote->published,
         ]);
 
-        return response()->json([
-            'data' => $patchNote->refresh()->load('user'),
-        ]);
+        return PatchNoteResource::make($patchNote->refresh()->load('user'))->response();
     }
 
     /**

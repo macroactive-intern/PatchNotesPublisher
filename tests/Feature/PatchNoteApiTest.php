@@ -45,6 +45,28 @@ test('patch note responses use consistent JSON structure and HTTP status codes',
         ->assertContent('');
 });
 
+test('patch note responses expose only safe fields and omit sensitive user data', function () {
+    $owner = User::factory()->editor()->create();
+    $patchNote = PatchNote::create([
+        'user_id' => $owner->id,
+        'title' => 'Public notes',
+        'content' => 'Public content.',
+        'published' => true,
+    ]);
+
+    $data = $this->getJson("/api/patch-notes/{$patchNote->id}")
+        ->assertOk()
+        ->json('data');
+
+    expect($data)->toHaveKeys(['id', 'title', 'content', 'published', 'user_id', 'user'])
+        ->and($data)->not->toHaveKey('email')
+        ->and($data)->not->toHaveKey('role')
+        ->and($data['user'])->toHaveKeys(['id', 'name'])
+        ->and($data['user'])->not->toHaveKey('email')
+        ->and($data['user'])->not->toHaveKey('role')
+        ->and($data['user'])->not->toHaveKey('password');
+});
+
 test('public users see only published patch notes in the listing', function () {
     $user = User::factory()->create();
 
