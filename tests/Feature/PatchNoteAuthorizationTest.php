@@ -7,6 +7,28 @@ use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
 
+test('authorization failures return exact status codes', function () {
+    $owner = User::factory()->editor()->create();
+    $viewer = User::factory()->viewer()->create();
+    $draft = PatchNote::create([
+        'user_id' => $owner->id,
+        'title' => 'Draft notes',
+        'content' => 'Private draft notes.',
+        'published' => false,
+    ]);
+
+    $this->getJson("/api/patch-notes/{$draft->id}")
+        ->assertStatus(401);
+
+    Sanctum::actingAs($viewer);
+
+    $this->getJson("/api/patch-notes/{$draft->id}")
+        ->assertStatus(403);
+
+    $this->getJson('/api/patch-notes/999999')
+        ->assertStatus(404);
+});
+
 test('guests can list patch notes and view published patch notes', function () {
     $owner = User::factory()->editor()->create();
     $patchNote = PatchNote::create([
