@@ -44,6 +44,27 @@ test('editors can toggle a patch note published state', function () {
         ->assertJsonPath('data.published', true);
 });
 
+test('editors cannot toggle another editors patch note published state', function () {
+    $editor = User::factory()->editor()->create();
+    $otherEditor = User::factory()->editor()->create();
+    $patchNote = PatchNote::create([
+        'user_id' => $otherEditor->id,
+        'title' => 'Others notes',
+        'content' => 'Owned by another editor.',
+        'published' => false,
+    ]);
+
+    Sanctum::actingAs($editor);
+
+    $this->patchJson("/api/patch-notes/{$patchNote->id}/publish")
+        ->assertForbidden();
+
+    $this->assertDatabaseHas('patch_notes', [
+        'id' => $patchNote->id,
+        'published' => false,
+    ]);
+});
+
 test('guests and viewers cannot toggle published state', function () {
     $owner = User::factory()->editor()->create();
     $viewer = User::factory()->viewer()->create();

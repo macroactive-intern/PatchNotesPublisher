@@ -78,7 +78,7 @@ class PatchNoteController extends Controller
 
     public function publish(PatchNote $patchNote): JsonResponse
     {
-        Gate::authorize('publish');
+        Gate::authorize('publish', $patchNote);
 
         $patchNote->update([
             'published' => ! $patchNote->published,
