@@ -43,6 +43,15 @@ class PatchNotePolicy
     }
 
     /**
+     * Determine whether the user can publish or unpublish the model.
+     */
+    public function publish(User $user, PatchNote $patchNote): bool
+    {
+        return $user->isAdmin()
+            || ($user->isEditor() && $patchNote->user_id === $user->id);
+    }
+
+    /**
      * Determine whether the user can delete the model.
      */
     public function delete(User $user, PatchNote $patchNote): bool

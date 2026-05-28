@@ -45,7 +45,59 @@ test('patch note responses use consistent JSON structure and HTTP status codes',
         ->assertContent('');
 });
 
-test('public users can list all patch notes', function () {
+test('index returns notes newest first with pagination metadata', function () {
+    $user = User::factory()->create();
+
+    $older = PatchNote::create([
+        'user_id' => $user->id,
+        'title' => 'Older note',
+        'content' => 'Created first.',
+        'published' => true,
+    ]);
+    $newer = PatchNote::create([
+        'user_id' => $user->id,
+        'title' => 'Newer note',
+        'content' => 'Created second.',
+        'published' => true,
+    ]);
+
+    $response = $this->getJson('/api/patch-notes')->assertOk();
+
+    $ids = $response->json('data.*.id');
+
+    expect($ids[0])->toBe($newer->id)
+        ->and($ids[1])->toBe($older->id);
+
+    $response->assertJsonStructure([
+        'data',
+        'links' => ['first', 'last', 'prev', 'next'],
+        'meta' => ['current_page', 'last_page', 'per_page', 'total'],
+    ]);
+});
+
+test('patch note responses expose only safe fields and omit sensitive user data', function () {
+    $owner = User::factory()->editor()->create();
+    $patchNote = PatchNote::create([
+        'user_id' => $owner->id,
+        'title' => 'Public notes',
+        'content' => 'Public content.',
+        'published' => true,
+    ]);
+
+    $data = $this->getJson("/api/patch-notes/{$patchNote->id}")
+        ->assertOk()
+        ->json('data');
+
+    expect($data)->toHaveKeys(['id', 'title', 'content', 'published', 'user_id', 'user'])
+        ->and($data)->not->toHaveKey('email')
+        ->and($data)->not->toHaveKey('role')
+        ->and($data['user'])->toHaveKeys(['id', 'name'])
+        ->and($data['user'])->not->toHaveKey('email')
+        ->and($data['user'])->not->toHaveKey('role')
+        ->and($data['user'])->not->toHaveKey('password');
+});
+
+test('public users see only published patch notes in the listing', function () {
     $user = User::factory()->create();
 
     PatchNote::create([
@@ -58,15 +110,15 @@ test('public users can list all patch notes', function () {
     PatchNote::create([
         'user_id' => $user->id,
         'title' => 'Draft notes',
-        'content' => 'Visible draft content.',
+        'content' => 'Hidden draft content.',
         'published' => false,
     ]);
 
     $this->getJson('/api/patch-notes')
         ->assertOk()
-        ->assertJsonCount(2, 'data')
+        ->assertJsonCount(1, 'data')
         ->assertJsonFragment(['title' => 'Published notes'])
-        ->assertJsonFragment(['title' => 'Draft notes']);
+        ->assertJsonMissing(['title' => 'Draft notes']);
 });
 
 test('patch note API routes support CRUD operations', function () {
@@ -292,6 +344,26 @@ test('editors can update their own patch notes but cannot update others or delet
 
     $this->deleteJson("/api/patch-notes/{$ownPatchNote->id}")
         ->assertForbidden();
+});
+
+test('update rejects an empty payload with 422', function () {
+    $admin = User::factory()->admin()->create();
+    $patchNote = PatchNote::create([
+        'user_id' => $admin->id,
+        'title' => 'Original title',
+        'content' => 'Original content.',
+        'published' => false,
+    ]);
+
+    Sanctum::actingAs($admin);
+
+    $this->putJson("/api/patch-notes/{$patchNote->id}", [])
+        ->assertUnprocessable();
+
+    $this->assertDatabaseHas('patch_notes', [
+        'id' => $patchNote->id,
+        'title' => 'Original title',
+    ]);
 });
 
 test('update ignores submitted user ids', function () {

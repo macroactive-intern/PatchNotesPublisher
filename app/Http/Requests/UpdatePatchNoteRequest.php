@@ -27,9 +27,23 @@ class UpdatePatchNoteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['sometimes', 'string', 'max:255'],
-            'content' => ['sometimes', 'string'],
-            'published' => ['sometimes', 'boolean'],
+            'title' => ['required_without_all:content,published', 'string', 'max:255'],
+            'content' => ['required_without_all:title,published', 'string'],
+            'published' => ['required_without_all:title,content', 'boolean'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        $msg = 'Provide at least one of: title, content, or published.';
+
+        return [
+            'title.required_without_all'     => $msg,
+            'content.required_without_all'   => $msg,
+            'published.required_without_all' => $msg,
         ];
     }
 }

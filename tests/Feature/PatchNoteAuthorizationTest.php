@@ -108,6 +108,88 @@ test('admins can create update any delete any and view draft patch notes', funct
     $this->assertDatabaseHas('patch_notes', ['id' => $created['id']]);
 });
 
+test('editors see their own drafts and all published notes in the listing but not others drafts', function () {
+    $editor = User::factory()->editor()->create();
+    $otherEditor = User::factory()->editor()->create();
+
+    PatchNote::create([
+        'user_id' => $editor->id,
+        'title' => 'Own draft',
+        'content' => 'My draft.',
+        'published' => false,
+    ]);
+    PatchNote::create([
+        'user_id' => $otherEditor->id,
+        'title' => 'Others draft',
+        'content' => 'Not mine.',
+        'published' => false,
+    ]);
+    PatchNote::create([
+        'user_id' => $otherEditor->id,
+        'title' => 'Published note',
+        'content' => 'Publicly visible.',
+        'published' => true,
+    ]);
+
+    Sanctum::actingAs($editor);
+
+    $this->getJson('/api/patch-notes')
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonFragment(['title' => 'Own draft'])
+        ->assertJsonFragment(['title' => 'Published note'])
+        ->assertJsonMissing(['title' => 'Others draft']);
+});
+
+test('admins see all patch notes including drafts in the listing', function () {
+    $admin = User::factory()->admin()->create();
+    $editor = User::factory()->editor()->create();
+
+    PatchNote::create([
+        'user_id' => $editor->id,
+        'title' => 'Published note',
+        'content' => 'Visible.',
+        'published' => true,
+    ]);
+    PatchNote::create([
+        'user_id' => $editor->id,
+        'title' => 'Draft note',
+        'content' => 'Hidden from others.',
+        'published' => false,
+    ]);
+
+    Sanctum::actingAs($admin);
+
+    $this->getJson('/api/patch-notes')
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonFragment(['title' => 'Published note'])
+        ->assertJsonFragment(['title' => 'Draft note']);
+});
+
+test('guests see only published patch notes in the listing', function () {
+    $editor = User::factory()->editor()->create();
+
+    PatchNote::create([
+        'user_id' => $editor->id,
+        'title' => 'Published note',
+        'content' => 'Visible.',
+        'published' => true,
+    ]);
+    PatchNote::create([
+        'user_id' => $editor->id,
+        'title' => 'Draft note',
+        'content' => 'Hidden.',
+        'published' => false,
+    ]);
+
+    $this->getJson('/api/patch-notes')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonFragment(['title' => 'Published note'])
+        ->assertJsonMissing(['title' => 'Draft note']);
+});
+
 test('editors can create and update their own notes only', function () {
     $editor = User::factory()->editor()->create();
     $otherEditor = User::factory()->editor()->create();
@@ -173,7 +255,8 @@ test('viewers are read only', function () {
 
     $this->getJson('/api/patch-notes')
         ->assertOk()
-        ->assertJsonFragment(['title' => 'Published notes']);
+        ->assertJsonFragment(['title' => 'Published notes'])
+        ->assertJsonMissing(['title' => 'Draft notes']);
 
     $this->getJson("/api/patch-notes/{$published->id}")
         ->assertOk();

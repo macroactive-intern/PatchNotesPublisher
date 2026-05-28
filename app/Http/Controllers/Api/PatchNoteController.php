@@ -5,23 +5,40 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePatchNoteRequest;
 use App\Http\Requests\UpdatePatchNoteRequest;
+use App\Http\Resources\PatchNoteResource;
 use App\Models\PatchNote;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
 class PatchNoteController extends Controller
 {
+    private const PER_PAGE = 15;
+
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', PatchNote::class);
 
-        return response()->json([
-            'data' => PatchNote::with('user')->get(),
-        ]);
+        $user = $request->user();
+
+        $notes = PatchNote::with('user')
+            ->when(! $user?->isAdmin(), function ($query) use ($user) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('published', true);
+                    if ($user?->isEditor()) {
+                        $q->orWhere('user_id', $user->id);
+                    }
+                });
+            })
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate(self::PER_PAGE);
+
+        return PatchNoteResource::collection($notes)->response();
     }
 
     /**
@@ -33,9 +50,9 @@ class PatchNoteController extends Controller
 
         $patchNote = $request->user()->patchNotes()->create($request->validated());
 
-        return response()->json([
-            'data' => $patchNote->refresh()->load('user'),
-        ], Response::HTTP_CREATED);
+        return PatchNoteResource::make($patchNote->refresh()->load('user'))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     /**
@@ -45,9 +62,7 @@ class PatchNoteController extends Controller
     {
         Gate::authorize('view', $patchNote);
 
-        return response()->json([
-            'data' => $patchNote->load('user'),
-        ]);
+        return PatchNoteResource::make($patchNote->load('user'))->response();
     }
 
     /**
@@ -59,22 +74,21 @@ class PatchNoteController extends Controller
 
         $patchNote->update($request->validated());
 
-        return response()->json([
-            'data' => $patchNote->refresh()->load('user'),
-        ]);
+        return PatchNoteResource::make($patchNote->refresh()->load('user'))->response();
     }
 
+    /**
+     * Toggle the published state of the specified resource.
+     */
     public function publish(PatchNote $patchNote): JsonResponse
     {
-        Gate::authorize('publish');
+        Gate::authorize('publish', $patchNote);
 
         $patchNote->update([
             'published' => ! $patchNote->published,
         ]);
 
-        return response()->json([
-            'data' => $patchNote->refresh()->load('user'),
-        ]);
+        return PatchNoteResource::make($patchNote->refresh()->load('user'))->response();
     }
 
     /**
