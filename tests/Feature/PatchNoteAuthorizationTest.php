@@ -104,7 +104,9 @@ test('editors can create and update their own notes only', function () {
     $this->postJson('/api/patch-notes', [
         'title' => 'Editor notes',
         'content' => 'Created by editor.',
-    ])->assertCreated();
+    ])
+        ->assertCreated()
+        ->assertJsonPath('user_id', $editor->id);
 
     $this->getJson("/api/patch-notes/{$ownPatchNote->id}")
         ->assertOk();
