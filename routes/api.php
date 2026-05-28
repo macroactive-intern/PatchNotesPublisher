@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\PatchNoteController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', function () {
@@ -8,3 +9,5 @@ Route::get('/health', function () {
         'app' => config('app.name'),
     ]);
 });
+
+Route::apiResource('patch-notes', PatchNoteController::class);
