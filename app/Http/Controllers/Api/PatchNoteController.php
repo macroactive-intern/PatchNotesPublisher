@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Gate;
 
 class PatchNoteController extends Controller
 {
+    private const PER_PAGE = 15;
+
     /**
      * Display a listing of the resource.
      */
@@ -34,7 +36,7 @@ class PatchNoteController extends Controller
             })
             ->orderByDesc('created_at')
             ->orderByDesc('id')
-            ->paginate(15);
+            ->paginate(self::PER_PAGE);
 
         return PatchNoteResource::collection($notes)->response();
     }
@@ -75,6 +77,9 @@ class PatchNoteController extends Controller
         return PatchNoteResource::make($patchNote->refresh()->load('user'))->response();
     }
 
+    /**
+     * Toggle the published state of the specified resource.
+     */
     public function publish(PatchNote $patchNote): JsonResponse
     {
         Gate::authorize('publish', $patchNote);
