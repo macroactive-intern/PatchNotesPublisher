@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePatchNoteRequest;
 use App\Models\PatchNote;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,11 +28,11 @@ class PatchNoteController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StorePatchNoteRequest $request): JsonResponse
     {
         Gate::authorize('create', PatchNote::class);
 
-        $patchNote = PatchNote::create($this->validatedData($request));
+        $patchNote = PatchNote::create($request->validated());
 
         return response()->json($patchNote->load('user'), Response::HTTP_CREATED);
     }
