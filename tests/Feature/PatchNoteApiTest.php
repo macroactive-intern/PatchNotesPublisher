@@ -346,6 +346,26 @@ test('editors can update their own patch notes but cannot update others or delet
         ->assertForbidden();
 });
 
+test('update rejects an empty payload with 422', function () {
+    $admin = User::factory()->admin()->create();
+    $patchNote = PatchNote::create([
+        'user_id' => $admin->id,
+        'title' => 'Original title',
+        'content' => 'Original content.',
+        'published' => false,
+    ]);
+
+    Sanctum::actingAs($admin);
+
+    $this->putJson("/api/patch-notes/{$patchNote->id}", [])
+        ->assertUnprocessable();
+
+    $this->assertDatabaseHas('patch_notes', [
+        'id' => $patchNote->id,
+        'title' => 'Original title',
+    ]);
+});
+
 test('update ignores submitted user ids', function () {
     $admin = User::factory()->admin()->create();
     $owner = User::factory()->editor()->create();
