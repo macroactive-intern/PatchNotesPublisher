@@ -32,4 +32,18 @@ class UpdatePatchNoteRequest extends FormRequest
             'published' => ['required_without_all:title,content', 'boolean'],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        $msg = 'Provide at least one of: title, content, or published.';
+
+        return [
+            'title.required_without_all'     => $msg,
+            'content.required_without_all'   => $msg,
+            'published.required_without_all' => $msg,
+        ];
+    }
 }
