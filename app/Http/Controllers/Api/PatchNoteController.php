@@ -7,6 +7,7 @@ use App\Http\Requests\StorePatchNoteRequest;
 use App\Http\Requests\UpdatePatchNoteRequest;
 use App\Models\PatchNote;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
@@ -15,13 +16,24 @@ class PatchNoteController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', PatchNote::class);
 
-        return response()->json([
-            'data' => PatchNote::with('user')->get(),
-        ]);
+        $user = $request->user();
+
+        $notes = PatchNote::with('user')
+            ->when(! $user?->isAdmin(), function ($query) use ($user) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('published', true);
+                    if ($user?->isEditor()) {
+                        $q->orWhere('user_id', $user->id);
+                    }
+                });
+            })
+            ->get();
+
+        return response()->json(['data' => $notes]);
     }
 
     /**

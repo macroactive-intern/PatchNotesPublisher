@@ -45,7 +45,7 @@ test('patch note responses use consistent JSON structure and HTTP status codes',
         ->assertContent('');
 });
 
-test('public users can list all patch notes', function () {
+test('public users see only published patch notes in the listing', function () {
     $user = User::factory()->create();
 
     PatchNote::create([
@@ -58,15 +58,15 @@ test('public users can list all patch notes', function () {
     PatchNote::create([
         'user_id' => $user->id,
         'title' => 'Draft notes',
-        'content' => 'Visible draft content.',
+        'content' => 'Hidden draft content.',
         'published' => false,
     ]);
 
     $this->getJson('/api/patch-notes')
         ->assertOk()
-        ->assertJsonCount(2, 'data')
+        ->assertJsonCount(1, 'data')
         ->assertJsonFragment(['title' => 'Published notes'])
-        ->assertJsonFragment(['title' => 'Draft notes']);
+        ->assertJsonMissing(['title' => 'Draft notes']);
 });
 
 test('patch note API routes support CRUD operations', function () {
