@@ -96,7 +96,7 @@ class PatchNoteController extends Controller
      */
     public function destroy(PatchNote $patchNote): Response
     {
-        Gate::authorize('delete', $patchNote); // ✅ Added back after discovering the issue
+        Gate::authorize('delete', $patchNote);
 
         $patchNote->delete();
 
@@ -104,3 +104,4 @@ class PatchNoteController extends Controller
     }
 
 }
+
