@@ -276,3 +276,81 @@ test('viewers are read only', function () {
     $this->deleteJson("/api/patch-notes/{$published->id}")
         ->assertForbidden();
 });
+
+test('curveball: editors cannot delete any patch notes', function () {
+    $admin = User::factory()->admin()->create();
+    $editor = User::factory()->editor()->create();
+
+    $adminNote = PatchNote::create([
+        'user_id' => $admin->id,
+        'title' => 'Admin notes',
+        'content' => 'Created by admin.',
+        'published' => true,
+    ]);
+
+    $editorNote = PatchNote::create([
+        'user_id' => $editor->id,
+        'title' => 'Editor notes',
+        'content' => 'Created by editor.',
+        'published' => false,
+    ]);
+
+    Sanctum::actingAs($editor);
+
+    $this->deleteJson("/api/patch-notes/{$adminNote->id}")
+        ->assertForbidden();
+
+    $this->deleteJson("/api/patch-notes/{$editorNote->id}")
+        ->assertForbidden();
+
+    $this->assertDatabaseHas('patch_notes', ['id' => $adminNote->id]);
+    $this->assertDatabaseHas('patch_notes', ['id' => $editorNote->id]);
+
+    Sanctum::actingAs($admin);
+
+    $this->deleteJson("/api/patch-notes/{$adminNote->id}")
+        ->assertNoContent();
+
+    $this->assertDatabaseMissing('patch_notes', ['id' => $adminNote->id]);
+});
+
+test('curveball: editors can delete patch notes when authorization is missing', function () {
+    $admin = User::factory()->admin()->create();
+    $editor = User::factory()->editor()->create();
+
+    $adminNote = PatchNote::create([
+        'user_id' => $admin->id,
+        'title' => 'Admin notes',
+        'content' => 'Created by admin.',
+        'published' => true,
+    ]);
+
+    $editorNote = PatchNote::create([
+        'user_id' => $editor->id,
+        'title' => 'Editor notes',
+        'content' => 'Created by editor.',
+        'published' => false,
+    ]);
+
+    Sanctum::actingAs($editor);
+
+    // Editors CANNOT delete admin notes
+    $this->deleteJson("/api/patch-notes/{$adminNote->id}")
+        ->assertForbidden(); // ✅ Now correctly blocked
+
+    // Editors CANNOT delete their own notes either
+    $this->deleteJson("/api/patch-notes/{$editorNote->id}")
+        ->assertForbidden(); // ✅ Now correctly blocked
+
+    // Verify the notes still exist
+    $this->assertDatabaseHas('patch_notes', ['id' => $adminNote->id]);
+    $this->assertDatabaseHas('patch_notes', ['id' => $editorNote->id]);
+
+    // But admins CAN delete
+    Sanctum::actingAs($admin);
+
+    $this->deleteJson("/api/patch-notes/{$adminNote->id}")
+        ->assertNoContent(); // ✅ Admin can delete
+
+    $this->assertDatabaseMissing('patch_notes', ['id' => $adminNote->id]);
+});

@@ -2,23 +2,10 @@
 
 namespace App\Http\Requests;
 
-use App\Models\PatchNote;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdatePatchNoteRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        $patchNote = $this->route('patch_note');
-        $user = $this->user();
-
-        return $user?->isAdmin()
-            || ($user?->isEditor() && $patchNote instanceof PatchNote && $patchNote->user_id === $user->id);
-    }
-
     /**
      * Get the validation rules that apply to the request.
      *
